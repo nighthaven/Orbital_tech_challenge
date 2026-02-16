@@ -86,7 +86,7 @@ docker compose run --rm agent
 
 ## Stack technique
 
-- **Backend** : FastAPI 
+- **Backend** : FastAPI
 - **Frontend** : Libre React
 - **Streaming** : SSE ou WebSocket (à ton choix)
 

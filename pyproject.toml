@@ -1,0 +1,18 @@
+[project]
+name = "orbital-tech-challenge"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "duckdb>=1.4.4",
+    "fastapi>=0.129.0",
+    "pandas>=3.0.0",
+    "plotly>=6.5.2",
+    "pre-commit>=4.5.1",
+    "pydantic-ai-slim[anthropic]>=1.59.0",
+    "pytest>=9.0.2",
+    "python-dotenv>=1.2.1",
+]
+
+[tool.uv.dependencies]
+"pydantic-ai-slim[anthropic]" = "*"
