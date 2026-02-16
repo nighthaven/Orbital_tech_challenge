@@ -1,3 +1,6 @@
+# mac .idea folder related
+.idea
+
 # Override root gitignore: include data/ and CSV files for the case
 !data/
 !data/*.csv
