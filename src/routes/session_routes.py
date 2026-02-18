@@ -1,5 +1,12 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
-from typing import Annotated
+from fastapi import (
+    APIRouter,
+    Depends,
+    Request,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from typing import Annotated, Optional
 
 from src.exceptions.session.session_not_found_exception import SessionNotFoundException
 from src.schemas.session_schemas.session_response import SessionResponse
@@ -15,12 +22,28 @@ router = APIRouter(
 )
 
 
-def get_session_service(request: Request) -> SessionService:
-    return request.app.state.session_service
+def get_session_service(
+    request: Optional[Request] = None,
+    web_socket: Optional[WebSocket] = None,
+) -> SessionService:
+    if request is not None:
+        return request.app.state.session_service
+    elif web_socket is not None:
+        return web_socket.app.state.session_service
+    else:
+        raise RuntimeError("Either request or web_socket must be provided")
 
 
-def get_dataset_service(request: Request) -> DatasetService:
-    return request.app.state.dataset_service
+def get_dataset_service(
+    request: Optional[Request] = None,
+    web_socket: Optional[WebSocket] = None,
+) -> DatasetService:
+    if request:
+        return request.app.state.dataset_service
+    elif web_socket:
+        return web_socket.app.state.dataset_service
+    else:
+        raise RuntimeError("Either request or web_socket must be provided")
 
 
 @router.post("/", response_model=SessionResponse)
@@ -60,3 +83,20 @@ async def ask(
             status_code=404,
             detail=f"Session not found. session id provided: {session_id}",
         )
+
+
+@router.websocket("/{session_id}/chat")
+async def chat_websocket(
+    web_socket: WebSocket,
+    session_id: str,
+    dataset_service: DatasetService = Depends(get_dataset_service),
+    session_service: SessionService = Depends(get_session_service),
+):
+    await web_socket.accept()
+    chat_usecase = ChatUseCase(dataset_service, session_service)
+    try:
+        await chat_usecase.stream_ask(web_socket, session_id)
+    except WebSocketDisconnect:
+        print(f"Session {session_id} disconnected")
+    finally:
+        await web_socket.close()

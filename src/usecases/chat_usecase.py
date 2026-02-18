@@ -1,6 +1,6 @@
 import json
 import re
-
+from fastapi import WebSocket
 from pydantic_ai.messages import (
     ModelResponse,
     TextPart,
@@ -23,6 +23,22 @@ class ChatUseCase:
     ) -> None:
         self._dataset_service = dataset_service
         self._session_service = session_service
+
+    async def stream_ask(self, web_socket: WebSocket, session_id: str):
+        """Stream question answer with the agent for the chat."""
+        while True:
+            data = await web_socket.receive_json()
+            question = data.get("question")
+            if not question:
+                continue
+            response = await self.ask(session_id, question)
+            await web_socket.send_json(
+                {
+                    "answer": response.answer,
+                    "thinking": response.thinking,
+                    "tool_calls": [tc.dict() for tc in response.tool_calls],
+                }
+            )
 
     async def ask(self, session_id: str, question: str) -> AskResponseModel:
         """Ask a question to the agent in an existing session."""

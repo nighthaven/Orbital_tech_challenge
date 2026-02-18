@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -39,3 +40,5 @@ app.add_middleware(
 )
 
 app.include_router(sessions_router, prefix="/api")
+
+app.mount("/api/files", StaticFiles(directory="output"), name="output_files")
