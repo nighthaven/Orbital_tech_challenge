@@ -16,6 +16,7 @@ from src.schemas.session_schemas.tool_calls import ToolCall
 from src.services.dataset_service import DatasetService
 from src.services.session_service import SessionService
 from src.usecases.infrastructure.thinking_stream_parser import ThinkingStreamParser
+from src.usecases.infrastructure.plotly_extractor import extract_plotly_json_from_html
 
 _FILE_PATH_RE = re.compile(r"Saved to: (output/\S+)")
 
@@ -112,6 +113,8 @@ class ChatUseCase:
         if file_match:
             file_path = file_match.group(1)
             event["file_url"] = self._server_path_to_url(file_path)
+            if file_path.endswith(".html"):
+                event["plotly_json"] = extract_plotly_json_from_html(file_path)
 
         return event
 
