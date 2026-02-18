@@ -1,8 +1,21 @@
 services:
+  # Original CLI agent (docker compose run --rm agent)
   agent:
     build: .
+    command: ["uv", "run", "python", "main.py"]
     stdin_open: true
     tty: true
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+
+  # FastAPI backend (docker compose up api)
+  api:
+    build: .
+    ports:
+      - "8000:8000"
     env_file:
       - .env
     volumes:
