@@ -22,33 +22,24 @@ router = APIRouter(
 )
 
 
-def get_session_service(
-    request: Optional[Request] = None,
-    web_socket: Optional[WebSocket] = None,
-) -> SessionService:
-    if request is not None:
-        return request.app.state.session_service
-    elif web_socket is not None:
-        return web_socket.app.state.session_service
-    else:
-        raise RuntimeError("Either request or web_socket must be provided")
+# pour les routes HTTP
+def get_session_service_http(request: Request) -> SessionService:
+    return request.app.state.session_service
 
+def get_dataset_service_http(request: Request) -> DatasetService:
+    return request.app.state.dataset_service
 
-def get_dataset_service(
-    request: Optional[Request] = None,
-    web_socket: Optional[WebSocket] = None,
-) -> DatasetService:
-    if request:
-        return request.app.state.dataset_service
-    elif web_socket:
-        return web_socket.app.state.dataset_service
-    else:
-        raise RuntimeError("Either request or web_socket must be provided")
+# pour les websockets
+def get_session_service_ws(web_socket: WebSocket) -> SessionService:
+    return web_socket.app.state.session_service
+
+def get_dataset_service_ws(web_socket: WebSocket) -> DatasetService:
+    return web_socket.app.state.dataset_service
 
 
 @router.post("/", response_model=SessionResponse)
 def create_session(
-    session_service: Annotated[SessionService, Depends(get_session_service)],
+    session_service: Annotated[SessionService, Depends(get_session_service_http)],
 ):
     session_id = session_service.create_session()
     return SessionResponse(session_id=session_id)
@@ -57,7 +48,7 @@ def create_session(
 @router.delete("/{session_id}", status_code=204)
 def delete_session(
     session_id: str,
-    session_service: Annotated[SessionService, Depends(get_session_service)],
+    session_service: Annotated[SessionService, Depends(get_session_service_http)],
 ) -> None:
     try:
         session_service.delete_session(session_id)
@@ -72,8 +63,8 @@ def delete_session(
 async def ask(
     session_id: str,
     query: AskQuery,
-    dataset_service: Annotated[DatasetService, Depends(get_dataset_service)],
-    session_service: Annotated[SessionService, Depends(get_session_service)],
+    dataset_service: Annotated[DatasetService, Depends(get_dataset_service_http)],
+    session_service: Annotated[SessionService, Depends(get_session_service_http)],
 ):
     try:
         chat_usecase = ChatUseCase(dataset_service, session_service)
@@ -89,8 +80,8 @@ async def ask(
 async def chat_websocket(
     web_socket: WebSocket,
     session_id: str,
-    dataset_service: DatasetService = Depends(get_dataset_service),
-    session_service: SessionService = Depends(get_session_service),
+    dataset_service: DatasetService = Depends(get_dataset_service_ws),
+    session_service: SessionService = Depends(get_session_service_ws),
 ):
     await web_socket.accept()
     chat_usecase = ChatUseCase(dataset_service, session_service)
