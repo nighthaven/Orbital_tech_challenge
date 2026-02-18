@@ -1,6 +1,83 @@
-# Case Technique — Développeur Full Stack
+# Case Technique — Développeur Full Stack - Boris Le Bon
 
-## Contexte
+Puisque les instructions sont en français,
+je me permettrais d'écrire ainsi concernant le README.MD
+
+## Prerequis
+
+- [Docker](https://docs.docker.com/get-docker/) et [Docker Compose](https://docs.docker.com/compose/install/) (inclus dans Docker Desktop sur Mac/Windows)
+- Une cle API Anthropic (disponible sur [console.anthropic.com](https://console.anthropic.com/))
+
+## Installation et lancement
+
+### 1. Cloner le projet
+
+```bash
+git clone <url-du-repo>
+cd Orbital_tech_challenge
+```
+
+### 2. Configurer l'environnement
+
+```bash
+cp .env.example .env
+```
+
+Editer `.env` avec votre cle API :
+
+```
+MODEL=anthropic:claude-haiku-4-5-20251001
+ANTHROPIC_API_KEY=sk-ant-api03-VOTRE_CLE_ICI
+```
+
+### 3. Ajouter des donnees
+
+Placer vos fichiers CSV dans le dossier `data/`. Des fichiers d'exemple sont deja fournis.
+
+### 4. Lancer l'API (backend FastAPI)
+
+```bash
+docker compose up api --build
+```
+
+L'API est accessible sur `http://localhost:8000`.
+La documentation Swagger est disponible sur `http://localhost:8000/docs`.
+
+### 5. Lancer l'agent CLI (optionnel)
+
+L'agent CLI original reste disponible :
+
+```bash
+docker compose run --rm agent
+```
+
+## A propos de UV
+
+J'ai modifie la configuration pre-etablie afin d'ajouter uv.
+Avec uv, plus besoin de requirements.txt, les dependances s'installent dans pyproject.toml
+automatiquement lorsqu'on les ajoute avec les commandes uv.
+
+## Lancer les tests
+
+```bash
+# Avec uv (en local)
+uv run pytest tests
+
+# Avec Docker
+docker compose run --rm api uv run pytest tests
+```
+
+## Lancer les linters
+
+note: git doit etre configuré avec le projet
+
+```bash
+uv run pre-commit run --all-files
+```
+
+## Instructions
+
+### Contexte
 
 Tu reçois un **agent d'analyse de données** qui fonctionne en mode CLI (terminal).
 
@@ -15,7 +92,7 @@ L'agent est construit avec [PydanticAI](https://ai.pydantic.dev/).
 
 ---
 
-## Objectif
+### Objectif
 
 **Transformer cet agent CLI en une application web complète.**
 
@@ -28,7 +105,7 @@ L'utilisateur doit pouvoir poser des questions dans une interface web et voir en
 
 ---
 
-## Ce qui est fourni
+### Ce qui est fourni
 
 ```
 case_fullstack/
@@ -51,7 +128,7 @@ case_fullstack/
 
 ---
 
-## Setup
+### Setup
 
 ```bash
 # 1. Configurer la clé API
@@ -69,9 +146,9 @@ docker compose run --rm agent
 
 ---
 
-## Ce qui est attendu
+### Ce qui est attendu
 
-### Minimum requis
+#### Minimum requis
 
 - [ ] **Backend API** avec endpoint de streaming (SSE ou WebSocket)
 - [ ] **Frontend web** avec :
@@ -84,7 +161,7 @@ docker compose run --rm agent
 
 ---
 
-## Stack technique
+### Stack technique
 
 - **Backend** : FastAPI
 - **Frontend** : Libre React
@@ -92,7 +169,7 @@ docker compose run --rm agent
 
 ---
 
-## Critères d'évaluation
+### Critères d'évaluation
 
 | Critère | Description |
 |---------|-------------|
@@ -103,7 +180,7 @@ docker compose run --rm agent
 
 ---
 
-## Ressources utiles
+### Ressources utiles
 
 - [PydanticAI — Documentation](https://ai.pydantic.dev/)
 - [PydanticAI — Streaming](https://ai.pydantic.dev/streaming/)
