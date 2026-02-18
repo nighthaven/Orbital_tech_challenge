@@ -1,4 +1,5 @@
 import uuid
+from typing import List, Any
 
 from src.exceptions.session.session_not_found_exception import SessionNotFoundException
 
@@ -7,7 +8,7 @@ class SessionService:
     """In-memory store for conversation histories, keyed by session ID."""
 
     def __init__(self) -> None:
-        self._sessions: dict[str, list] = {}
+        self._sessions: dict[str, List] = {}
 
     def create_session(self) -> str:
         """Create a new session and return its ID."""
@@ -22,6 +23,16 @@ class SessionService:
         self._sessions.pop(session_id, None)
         return
 
-    def list_sessions(self) -> list[str]:
+    def list_sessions(self) -> List[str]:
         """Return all active session IDs."""
         return list(self._sessions.keys())
+
+    def get_history(self, session_id: str) -> list[Any]:
+        """Return message history for a session, or raise an error if session not found."""
+        if session_id not in self._sessions:
+            raise SessionNotFoundException(session_id)
+        return self._sessions[session_id]
+
+    def save_history(self, session_id: str, messages: List[str]) -> None:
+        """Overwrite the message history for a session."""
+        self._sessions[session_id] = messages
