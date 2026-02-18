@@ -6,7 +6,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from typing import Annotated, Optional
+from typing import Annotated
 
 from src.exceptions.session.session_not_found_exception import SessionNotFoundException
 from src.schemas.session_schemas.session_response import SessionResponse
@@ -26,12 +26,15 @@ router = APIRouter(
 def get_session_service_http(request: Request) -> SessionService:
     return request.app.state.session_service
 
+
 def get_dataset_service_http(request: Request) -> DatasetService:
     return request.app.state.dataset_service
+
 
 # pour les websockets
 def get_session_service_ws(web_socket: WebSocket) -> SessionService:
     return web_socket.app.state.session_service
+
 
 def get_dataset_service_ws(web_socket: WebSocket) -> DatasetService:
     return web_socket.app.state.dataset_service
@@ -83,11 +86,21 @@ async def chat_websocket(
     dataset_service: DatasetService = Depends(get_dataset_service_ws),
     session_service: SessionService = Depends(get_session_service_ws),
 ):
+    try:
+        session_service.get_history(session_id)
+    except SessionNotFoundException:
+        await web_socket.accept()
+        await web_socket.send_json({"type": "error", "content": "Session not found"})
+        await web_socket.close(code=4004, reason="Session not found")
+        return
+
     await web_socket.accept()
     chat_usecase = ChatUseCase(dataset_service, session_service)
+
     try:
         await chat_usecase.stream_ask(web_socket, session_id)
     except WebSocketDisconnect:
-        print(f"Session {session_id} disconnected")
-    finally:
-        await web_socket.close()
+        pass
+    except Exception as e:
+        await web_socket.send_json({"type": "error", "content": str(e)})
+        await web_socket.close(code=1011, reason="Internal error")

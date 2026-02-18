@@ -33,3 +33,29 @@ class TestChatUsecase:
         response = await self.chat_usecase.ask(session_id, question)
         assert response.answer == "Hello"
         assert "analysis" in response.thinking
+
+    # @pytest.mark.skip(reason="risk to nail my plan suscription.")
+    @pytest.mark.asyncio
+    @patch("src.usecases.chat_usecase.create_agent")
+    async def test_stream_agent_response(
+        self,
+        mock_create_agent,
+        fake_websocket,
+        fake_agent_factory,
+    ):
+        deltas = [
+            "<thinking>analysis</thinking>",
+            "Hello",
+        ]
+
+        mock_create_agent.return_value = fake_agent_factory(deltas)
+
+        session_id = self.chat_usecase._session_service.create_session()
+
+        await self.chat_usecase.stream_agent_response(
+            fake_websocket, session_id, "Hello"
+        )
+
+        assert any(e["type"] == "thinking" for e in fake_websocket.sent)
+        assert any(e["type"] == "text_delta" for e in fake_websocket.sent)
+        assert fake_websocket.sent[-1]["type"] == "done"

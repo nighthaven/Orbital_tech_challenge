@@ -5,6 +5,8 @@ from pydantic_ai.messages import (
     ModelResponse,
     TextPart,
     ToolCallPart,
+    ModelRequest,
+    ToolReturnPart,
 )
 
 from src.agent.agent import create_agent
@@ -13,6 +15,9 @@ from src.schemas.session_schemas.ask_response_model import AskResponseModel
 from src.schemas.session_schemas.tool_calls import ToolCall
 from src.services.dataset_service import DatasetService
 from src.services.session_service import SessionService
+from tests.usecases.infrastructure.thinking_stream_parser import ThinkingStreamParser
+
+_FILE_PATH_RE = re.compile(r"Saved to: (output/\S+)")
 
 
 class ChatUseCase:
@@ -24,21 +29,96 @@ class ChatUseCase:
         self._dataset_service = dataset_service
         self._session_service = session_service
 
-    async def stream_ask(self, web_socket: WebSocket, session_id: str):
-        """Stream question answer with the agent for the chat."""
+    async def stream_ask(self, ws: WebSocket, session_id: str) -> None:
+        """Listen for questions on WebSocket and stream agent responses."""
         while True:
-            data = await web_socket.receive_json()
+            data = await ws.receive_json()
             question = data.get("question")
             if not question:
                 continue
-            response = await self.ask(session_id, question)
-            await web_socket.send_json(
-                {
-                    "answer": response.answer,
-                    "thinking": response.thinking,
-                    "tool_calls": [tc.dict() for tc in response.tool_calls],
-                }
-            )
+
+            try:
+                await self.stream_agent_response(ws, session_id, question)
+            except Exception as e:
+                await ws.send_json({"type": "error", "content": str(e)})
+
+    async def stream_agent_response(
+        self, ws: WebSocket, session_id: str, question: str
+    ) -> None:
+        history = self._session_service.get_history(session_id)
+        context = AgentContext(
+            datasets=self._dataset_service.datasets,
+            dataset_info=self._dataset_service.dataset_info,
+        )
+        agent = create_agent(self._dataset_service.dataset_info)
+
+        async with agent.run_stream(
+            question, deps=context, message_history=history or None
+        ) as stream:
+            pre_stream_msgs = list(stream._all_messages)
+            new_pre_msgs = pre_stream_msgs[len(history) :]
+            await self._send_tool_events(ws, new_pre_msgs)
+
+            thinking_stream_parser = ThinkingStreamParser(ws)
+            async for delta in stream.stream_text(delta=True):
+                await thinking_stream_parser.feed(delta)
+            await thinking_stream_parser.flush()
+
+        all_msgs = stream.all_messages()
+        self._session_service.save_history(session_id, all_msgs)
+
+        await ws.send_json({"type": "done"})
+
+    async def _send_tool_events(self, ws: WebSocket, messages: list) -> None:
+        """Send tool_call and tool_result events from accumulated messages."""
+        for msg in messages:
+            if isinstance(msg, ModelResponse):
+                for part in msg.parts:
+                    if isinstance(part, ToolCallPart):
+                        args = (
+                            part.args
+                            if isinstance(part.args, dict)
+                            else (
+                                json.loads(part.args)
+                                if isinstance(part.args, str)
+                                else {}
+                            )
+                        )
+                        await ws.send_json(
+                            {
+                                "type": "tool_call",
+                                "tool_name": part.tool_name,
+                                "args": args,
+                            }
+                        )
+
+            elif isinstance(msg, ModelRequest):
+                for part in msg.parts:
+                    if isinstance(part, ToolReturnPart):
+                        content = str(part.content)
+                        event = self._build_tool_result_event(part.tool_name, content)
+                        await ws.send_json(event)
+
+    def _build_tool_result_event(self, tool_name: str, content: str) -> dict:
+        """Build a tool_result WebSocket event, enriching with URLs and Plotly JSON."""
+        event: dict = {
+            "type": "tool_result",
+            "tool_name": tool_name,
+            "content": content,
+            "file_url": None,
+        }
+
+        file_match = _FILE_PATH_RE.search(content)
+        if file_match:
+            file_path = file_match.group(1)
+            event["file_url"] = self._server_path_to_url(file_path)
+
+        return event
+
+    def _server_path_to_url(self, path: str) -> str:
+        """Convert 'output/foo.html' to '/api/files/foo.html'."""
+        filename = path.removeprefix("output/")
+        return f"/api/files/{filename}"
 
     async def ask(self, session_id: str, question: str) -> AskResponseModel:
         """Ask a question to the agent in an existing session."""
