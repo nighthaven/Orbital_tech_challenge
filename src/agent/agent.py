@@ -2,10 +2,10 @@ import os
 
 from pydantic_ai import Agent
 
-from agent.context import AgentContext
-from agent.prompt import get_system_prompt
-from agent.tools.query_data import query_data
-from agent.tools.visualize import visualize
+from src.agent.context import AgentContext
+from src.agent.prompt import get_system_prompt
+from src.agent.tools.query_data import query_data
+from src.agent.tools.visualize import visualize
 
 
 def create_agent(dataset_info: str) -> Agent[AgentContext]:

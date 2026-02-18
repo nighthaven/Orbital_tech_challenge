@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pydantic_ai import RunContext
 
-from agent.context import AgentContext
+from src.agent.context import AgentContext
 
 
 async def visualize(

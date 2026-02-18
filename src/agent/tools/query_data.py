@@ -1,7 +1,7 @@
 import duckdb
 from pydantic_ai import RunContext
 
-from agent.context import AgentContext
+from src.agent.context import AgentContext
 
 
 async def query_data(
