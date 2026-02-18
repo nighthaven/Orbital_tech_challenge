@@ -15,7 +15,7 @@ from src.schemas.session_schemas.ask_response_model import AskResponseModel
 from src.schemas.session_schemas.tool_calls import ToolCall
 from src.services.dataset_service import DatasetService
 from src.services.session_service import SessionService
-from tests.usecases.infrastructure.thinking_stream_parser import ThinkingStreamParser
+from src.usecases.infrastructure import ThinkingStreamParser
 
 _FILE_PATH_RE = re.compile(r"Saved to: (output/\S+)")
 
