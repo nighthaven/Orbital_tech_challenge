@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.services.dataset_service import DatasetService
 from src.services.session_service import SessionService
 from src.routes.session_routes import router as sessions_router
+from src.routes.dataset_routes import router as dataset_router
 
 
 @asynccontextmanager
@@ -40,5 +41,6 @@ app.add_middleware(
 )
 
 app.include_router(sessions_router, prefix="/api")
+app.include_router(dataset_router, prefix="/api")
 
 app.mount("/api/files", StaticFiles(directory="output"), name="output_files")

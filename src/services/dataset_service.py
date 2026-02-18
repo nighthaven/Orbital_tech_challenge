@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from typing import List, Dict
 
 import pandas as pd
 
@@ -8,12 +9,12 @@ class DatasetService:
     """Loads CSV files and store in datasets + metadata."""
 
     def __init__(self, data_dir: str = "data") -> None:
-        self._datasets: dict[str, pd.DataFrame] = {}
+        self._datasets: Dict[str, pd.DataFrame] = {}
         self._dataset_info: str = ""
         self._data_dir = data_dir
 
     @property
-    def datasets(self) -> dict[str, pd.DataFrame]:
+    def datasets(self) -> Dict[str, pd.DataFrame]:
         return self._datasets
 
     @property
@@ -28,7 +29,7 @@ class DatasetService:
             self._dataset_info = "No datasets available."
             return
 
-        info_lines: list[str] = []
+        info_lines: List[str] = []
 
         for csv_file in sorted(data_path.glob("*.csv")):
             name = re.sub(r"[^a-zA-Z0-9_]", "_", csv_file.stem).strip("_").lower()
@@ -48,3 +49,15 @@ class DatasetService:
             return
 
         self._dataset_info = "\n".join(info_lines)
+
+    def get_dataset_summaries(self) -> List[Dict[str, pd.DataFrame]]:
+        """Return a summary of each loaded dataset"""
+        return [
+            {
+                "name": name,
+                "rows": df.shape[0],
+                "columns": df.shape[1],
+                "column_names": df.columns.tolist(),
+            }
+            for name, df in self._datasets.items()
+        ]
