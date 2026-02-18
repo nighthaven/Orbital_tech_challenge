@@ -1,5 +1,3 @@
-
-
 class TestCreateSessionRoutes:
 
     def test_create_session_route(self, client):

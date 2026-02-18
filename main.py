@@ -16,11 +16,12 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
+from typing import List
+
+from src.agent.agent import create_agent
+from src.agent.context import AgentContext
 
 load_dotenv()
-
-from src.agent import create_agent
-from src.agent.context import AgentContext
 
 # ---------------------------------------------------------------------------
 # ANSI colors for terminal output
@@ -104,9 +105,7 @@ def display_messages(messages) -> None:
                     args = (
                         part.args
                         if isinstance(part.args, dict)
-                        else json.loads(part.args)
-                        if isinstance(part.args, str)
-                        else {}
+                        else json.loads(part.args) if isinstance(part.args, str) else {}
                     )
                     print(f"\n{YELLOW}[Tool: {part.tool_name}]{RESET}")
                     for key, value in args.items():
@@ -143,17 +142,19 @@ async def main() -> None:
 
     print(f"\n{BOLD}Data Analysis Agent — CLI{RESET}")
     print("=" * 40)
-    print(f"\nDatasets loaded:\n")
+    print("\nDatasets loaded:\n")
     for name, df in datasets.items():
         cols = ", ".join(df.columns.tolist())
-        print(f"  {BOLD}{name}{RESET}  {DIM}({df.shape[0]} rows, {df.shape[1]} columns){RESET}")
+        print(
+            f"  {BOLD}{name}{RESET}  {DIM}({df.shape[0]} rows, {df.shape[1]} columns){RESET}"
+        )
         print(f"  {DIM}Columns: {cols}{RESET}\n")
 
     agent = create_agent(dataset_info)
     context = AgentContext(datasets=datasets, dataset_info=dataset_info)
-    message_history = []
+    message_history: List[str] = []
 
-    print(f"Ask questions about your data. Type 'quit' to exit.\n")
+    print("Ask questions about your data. Type 'quit' to exit.\n")
 
     while True:
         try:
@@ -180,7 +181,7 @@ async def main() -> None:
 
             # Display only the new messages from this run
             all_msgs = result.all_messages()
-            new_msgs = all_msgs[len(message_history):]
+            new_msgs = all_msgs[len(message_history) :]
             display_messages(new_msgs)
 
             # Display final answer

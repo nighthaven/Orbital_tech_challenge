@@ -1,7 +1,6 @@
 from src.services.session_service import SessionService
 
 
-
 class TestSessionService:
     def setup_method(self):
         self.session_service = SessionService()

@@ -75,7 +75,9 @@ async def visualize(
             )
 
         else:
-            return f"Error: Unknown result_type '{result_type}'. Use 'figure' or 'table'."
+            return (
+                f"Error: Unknown result_type '{result_type}'. Use 'figure' or 'table'."
+            )
 
     except Exception as e:
         return f"Error creating visualization: {e}"
