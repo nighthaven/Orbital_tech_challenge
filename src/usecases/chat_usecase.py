@@ -57,62 +57,82 @@ class ChatUseCase:
             dataset_info=self._dataset_service.dataset_info,
         )
         agent = create_agent(self._dataset_service.dataset_info)
-        thinking_stream_parser = ThinkingStreamParser(ws)
 
         async for event in agent.run_stream_events(
             question, deps=context, message_history=history or None
         ):
             if isinstance(event, AgentRunResultEvent):
-                await thinking_stream_parser.flush()
-                self._session_service.save_history(
-                    session_id, event.result.all_messages()
-                )
-                await ws.send_json({"type": "done"})
-
+                await self._handle_agent_run_result_event(event, ws, session_id)
             elif isinstance(event, FunctionToolCallEvent):
-                part = event.part
-                args = (
-                    part.args
-                    if isinstance(part.args, dict)
-                    else (json.loads(part.args) if isinstance(part.args, str) else {})
-                )
-                await ws.send_json(
-                    {"type": "tool_call", "name": part.tool_name, "args": args}
-                )
-
+                await self._handle_tool_call_event(event, ws)
             elif isinstance(event, FunctionToolResultEvent):
-                result_part = event.result
-                if isinstance(result_part, ToolReturnPart):
-                    content = str(result_part.content)
-                    ws_event = self._build_tool_result_event(
-                        result_part.tool_name, content
-                    )
-                    await ws.send_json(ws_event)
-                    if ws_event.get("plotly_json"):
-                        await ws.send_json(
-                            {"type": "plot", "content": ws_event["plotly_json"]}
-                        )
-                    if (
-                        result_part.tool_name == "query_data"
-                        and context.current_dataframe is not None
-                    ):
-                        df = context.current_dataframe.head(200)
-                        await ws.send_json(
-                            {
-                                "type": "table",
-                                "content": json.loads(df.to_json(orient="records")),
-                                "columns": context.current_dataframe.columns.tolist(),
-                            }
-                        )
-
+                await self._handle_tool_result_event(event, ws, context)
             elif isinstance(event, PartDeltaEvent):
-                delta = event.delta
-                if isinstance(delta, TextPartDelta):
-                    await thinking_stream_parser.feed(delta.content_delta)
-                elif isinstance(delta, ThinkingPartDelta) and delta.content_delta:
-                    await ws.send_json(
-                        {"type": "thinking", "content": delta.content_delta}
-                    )
+                await self._handle_part_delta_event(event, ws)
+
+
+    async def _handle_agent_run_result_event(self, event: AgentRunResultEvent, ws: WebSocket, session_id: str) -> None:
+        """flush and save history and provide agent's final message"""
+        thinking_stream_parser = ThinkingStreamParser(ws)
+        await thinking_stream_parser.flush()
+        self._session_service.save_history(
+            session_id, event.result.all_messages()
+        )
+        await ws.send_json({"type": "done"})
+
+
+    @staticmethod
+    async def _handle_tool_call_event(event: FunctionToolCallEvent, websocket: WebSocket) -> None:
+        """Process the tool called by the agent"""
+        part = event.part
+        args = (
+            part.args
+            if isinstance(part.args, dict)
+            else (json.loads(part.args) if isinstance(part.args, str) else {})
+        )
+        await websocket.send_json(
+            {"type": "tool_call", "name": part.tool_name, "args": args}
+        )
+
+
+    async def _handle_tool_result_event(self, event: FunctionToolResultEvent, websocket: WebSocket, context: AgentContext) -> None:
+        """Process the result of a tool called by the agent and send it"""
+        result_part = event.result
+        if isinstance(result_part, ToolReturnPart):
+            content = str(result_part.content)
+            ws_event = self._build_tool_result_event(
+                result_part.tool_name, content
+            )
+            await websocket.send_json(ws_event)
+            if ws_event.get("plotly_json"):
+                await websocket.send_json(
+                    {"type": "plot", "content": ws_event["plotly_json"]}
+                )
+            if (
+                    result_part.tool_name == "query_data"
+                    and context.current_dataframe is not None
+            ):
+                df = context.current_dataframe.head(200)
+                await websocket.send_json(
+                    {
+                        "type": "table",
+                        "content": json.loads(df.to_json(orient="records")),
+                        "columns": context.current_dataframe.columns.tolist(),
+                    }
+                )
+
+
+    @staticmethod
+    async def _handle_part_delta_event(event: PartDeltaEvent, websocket: WebSocket) -> None:
+        """Process a partial update of message generating, text or thinking, and send it"""
+        delta = event.delta
+        thinking_stream_parser = ThinkingStreamParser(websocket)
+        if isinstance(delta, TextPartDelta):
+            await thinking_stream_parser.feed(delta.content_delta)
+        elif isinstance(delta, ThinkingPartDelta) and delta.content_delta:
+            await websocket.send_json(
+                {"type": "thinking", "content": delta.content_delta}
+            )
 
     def _build_tool_result_event(self, tool_name: str, content: str) -> dict:
         """Build a tool_result WebSocket event, enriching with URLs and Plotly JSON."""
