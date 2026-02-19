@@ -82,6 +82,8 @@ class ChatUseCase:
                     content = str(result_part.content)
                     ws_event = self._build_tool_result_event(result_part.tool_name, content)
                     await ws.send_json(ws_event)
+                    if ws_event.get("plotly_json"):
+                        await ws.send_json({"type": "plot", "content": ws_event["plotly_json"]})
 
             elif isinstance(event, PartDeltaEvent):
                 delta = event.delta
