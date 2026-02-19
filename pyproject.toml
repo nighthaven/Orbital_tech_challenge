@@ -12,7 +12,7 @@ dependencies = [
     "pydantic-ai-slim[anthropic]>=1.59.0",
     "pytest>=9.0.2",
     "python-dotenv>=1.2.1",
-    "uvicorn>=0.34.0",
+    "uvicorn[standard]>=0.34.0",
 ]
 
 [dependency-groups]

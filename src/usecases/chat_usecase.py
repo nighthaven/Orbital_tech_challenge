@@ -88,7 +88,7 @@ class ChatUseCase:
                         await ws.send_json(
                             {
                                 "type": "tool_call",
-                                "tool_name": part.tool_name,
+                                "name": part.tool_name,
                                 "args": args,
                             }
                         )
@@ -104,8 +104,8 @@ class ChatUseCase:
         """Build a tool_result WebSocket event, enriching with URLs and Plotly JSON."""
         event: dict = {
             "type": "tool_result",
-            "tool_name": tool_name,
-            "content": content,
+            "name": tool_name,
+            "result": content,
             "file_url": None,
         }
 

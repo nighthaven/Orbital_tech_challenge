@@ -57,7 +57,8 @@ class ThinkingStreamParser:
     async def _emit(self, event_type: str, content: str) -> None:
         stripped = content.strip()
         if stripped:
-            await self._ws.send_json({"type": event_type, "content": stripped})
+            ws_type = "text" if event_type == "text_delta" else event_type
+            await self._ws.send_json({"type": ws_type, "content": stripped})
 
     @staticmethod
     def _could_be_partial_tag(text: str, tag: str) -> bool:

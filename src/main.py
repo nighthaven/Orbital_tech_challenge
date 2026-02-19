@@ -1,8 +1,11 @@
 import os
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv()
 
 from src.services.dataset_service import DatasetService
 from src.services.session_service import SessionService
