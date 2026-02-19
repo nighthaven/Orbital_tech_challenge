@@ -16,12 +16,12 @@ def extract_plotly_json_from_html(html_path: str) -> dict | None:
 
     for marker in ("Plotly.newPlot(", "Plotly.react("):
         for match in re.finditer(re.escape(marker), html):
-            after_marker = html[match.end():]
+            after_marker = html[match.end() :]
 
             comma_idx = after_marker.find(",")
             if comma_idx == -1:
                 continue
-            rest = after_marker[comma_idx + 1:].strip()
+            rest = after_marker[comma_idx + 1 :].strip()
 
             try:
                 data, end = decoder.raw_decode(rest)

@@ -66,6 +66,7 @@ class FakeAgent:
 
         yield AgentRunResultEvent(result=FakeResult())
 
+
 @pytest.fixture
 def fake_agent_factory():
     def _factory(deltas):

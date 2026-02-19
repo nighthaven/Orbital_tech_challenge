@@ -64,7 +64,9 @@ class ChatUseCase:
         ):
             if isinstance(event, AgentRunResultEvent):
                 await thinking_stream_parser.flush()
-                self._session_service.save_history(session_id, event.result.all_messages())
+                self._session_service.save_history(
+                    session_id, event.result.all_messages()
+                )
                 await ws.send_json({"type": "done"})
 
             elif isinstance(event, FunctionToolCallEvent):
@@ -74,23 +76,31 @@ class ChatUseCase:
                     if isinstance(part.args, dict)
                     else (json.loads(part.args) if isinstance(part.args, str) else {})
                 )
-                await ws.send_json({"type": "tool_call", "name": part.tool_name, "args": args})
+                await ws.send_json(
+                    {"type": "tool_call", "name": part.tool_name, "args": args}
+                )
 
             elif isinstance(event, FunctionToolResultEvent):
                 result_part = event.result
                 if isinstance(result_part, ToolReturnPart):
                     content = str(result_part.content)
-                    ws_event = self._build_tool_result_event(result_part.tool_name, content)
+                    ws_event = self._build_tool_result_event(
+                        result_part.tool_name, content
+                    )
                     await ws.send_json(ws_event)
                     if ws_event.get("plotly_json"):
-                        await ws.send_json({"type": "plot", "content": ws_event["plotly_json"]})
+                        await ws.send_json(
+                            {"type": "plot", "content": ws_event["plotly_json"]}
+                        )
 
             elif isinstance(event, PartDeltaEvent):
                 delta = event.delta
                 if isinstance(delta, TextPartDelta):
                     await thinking_stream_parser.feed(delta.content_delta)
                 elif isinstance(delta, ThinkingPartDelta) and delta.content_delta:
-                    await ws.send_json({"type": "thinking", "content": delta.content_delta})
+                    await ws.send_json(
+                        {"type": "thinking", "content": delta.content_delta}
+                    )
 
     def _build_tool_result_event(self, tool_name: str, content: str) -> dict:
         """Build a tool_result WebSocket event, enriching with URLs and Plotly JSON."""
