@@ -33,7 +33,8 @@ class DatasetService:
 
         for csv_file in sorted(data_path.glob("*.csv")):
             name = re.sub(r"[^a-zA-Z0-9_]", "_", csv_file.stem).strip("_").lower()
-            df = pd.read_csv(csv_file)
+            df = pd.read_csv(csv_file, sep=None, engine="python")
+            df = df.loc[:, df.columns.notna() & (df.columns.str.strip() != "")]
             self._datasets[name] = df
 
             cols = ", ".join(df.columns.tolist())

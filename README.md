@@ -1,7 +1,18 @@
 # Case Technique — Développeur Full Stack - Boris Le Bon
 
+l'API de l'agent d'analyse de données
 Puisque les instructions sont en français,
 je me permettrais d'écrire ainsi concernant le README.MD
+
+## Structure des repos
+
+Les deux repos doivent etre places cote a cote pour que Docker Compose fonctionne :
+
+```
+projet/
+├── Orbital_tech_challenge/         # Backend FastAPI
+└── orbital_tech_challenge_front/   # Frontend React  ← ce repo
+```
 
 ## Prerequis
 
@@ -43,7 +54,23 @@ docker compose up api --build
 L'API est accessible sur `http://localhost:8000`.
 La documentation Swagger est disponible sur `http://localhost:8000/docs`.
 
-### 5. Lancer l'agent CLI (optionnel)
+### 5. Lancer le frontend React
+
+Cloner le repo frontend **a cote** de ce repo (meme dossier parent) :
+
+```bash
+git clone <url-du-repo-front> ../orbital_tech_challenge_front
+```
+
+Puis lancer backend + frontend ensemble :
+
+```bash
+docker compose up api front --build
+```
+
+Le frontend est accessible sur `http://localhost:5173`.
+
+### 6. Lancer l'agent CLI (optionnel)
 
 L'agent CLI original reste disponible :
 
