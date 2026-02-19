@@ -92,6 +92,18 @@ class ChatUseCase:
                         await ws.send_json(
                             {"type": "plot", "content": ws_event["plotly_json"]}
                         )
+                    if (
+                        result_part.tool_name == "query_data"
+                        and context.current_dataframe is not None
+                    ):
+                        df = context.current_dataframe.head(200)
+                        await ws.send_json(
+                            {
+                                "type": "table",
+                                "content": json.loads(df.to_json(orient="records")),
+                                "columns": context.current_dataframe.columns.tolist(),
+                            }
+                        )
 
             elif isinstance(event, PartDeltaEvent):
                 delta = event.delta

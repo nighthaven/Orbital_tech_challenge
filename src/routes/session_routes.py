@@ -102,5 +102,15 @@ async def chat_websocket(
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        await web_socket.send_json({"type": "error", "content": str(e)})
-        await web_socket.close(code=1011, reason="Internal error")
+        try:
+            await web_socket.send_json({"type": "error", "content": str(e)})
+            await web_socket.close(code=1011, reason="Internal error")
+        except Exception:
+            pass
+    except BaseException:
+        # CancelledError et autres BaseException : fermeture propre sans bloquer l'event loop
+        try:
+            await web_socket.close(code=1012, reason="Server shutdown")
+        except Exception:
+            pass
+        raise
