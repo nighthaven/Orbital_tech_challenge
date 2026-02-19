@@ -57,24 +57,24 @@ class ChatUseCase:
             dataset_info=self._dataset_service.dataset_info,
         )
         agent = create_agent(self._dataset_service.dataset_info)
+        parser = ThinkingStreamParser(ws)
 
         async for event in agent.run_stream_events(
             question, deps=context, message_history=history or None
         ):
             if isinstance(event, AgentRunResultEvent):
-                await self._handle_agent_run_result_event(event, ws, session_id)
+                await self._handle_agent_run_result_event(event, ws, session_id, parser)
             elif isinstance(event, FunctionToolCallEvent):
                 await self._handle_tool_call_event(event, ws)
             elif isinstance(event, FunctionToolResultEvent):
                 await self._handle_tool_result_event(event, ws, context)
             elif isinstance(event, PartDeltaEvent):
-                await self._handle_part_delta_event(event, ws)
+                await self._handle_part_delta_event(event, ws, parser)
 
 
-    async def _handle_agent_run_result_event(self, event: AgentRunResultEvent, ws: WebSocket, session_id: str) -> None:
-        """flush and save history and provide agent's final message"""
-        thinking_stream_parser = ThinkingStreamParser(ws)
-        await thinking_stream_parser.flush()
+    async def _handle_agent_run_result_event(self, event: AgentRunResultEvent, ws: WebSocket, session_id: str, parser: ThinkingStreamParser) -> None:
+        """Flush the stream parser, save history, and signal completion."""
+        await parser.flush()
         self._session_service.save_history(
             session_id, event.result.all_messages()
         )
@@ -123,12 +123,11 @@ class ChatUseCase:
 
 
     @staticmethod
-    async def _handle_part_delta_event(event: PartDeltaEvent, websocket: WebSocket) -> None:
+    async def _handle_part_delta_event(event: PartDeltaEvent, websocket: WebSocket, parser: ThinkingStreamParser) -> None:
         """Process a partial update of message generating, text or thinking, and send it"""
         delta = event.delta
-        thinking_stream_parser = ThinkingStreamParser(websocket)
         if isinstance(delta, TextPartDelta):
-            await thinking_stream_parser.feed(delta.content_delta)
+            await parser.feed(delta.content_delta)
         elif isinstance(delta, ThinkingPartDelta) and delta.content_delta:
             await websocket.send_json(
                 {"type": "thinking", "content": delta.content_delta}
@@ -152,8 +151,9 @@ class ChatUseCase:
 
         return event
 
-    def _server_path_to_url(self, path: str) -> str:
-        """Convert 'output/foo.html' to '/api/files/foo.html'."""
+    @staticmethod
+    def _server_path_to_url(path: str) -> str:
+        """Convert 'output/example.html' to '/api/files/example.html'."""
         filename = path.removeprefix("output/")
         return f"/api/files/{filename}"
 
