@@ -56,6 +56,6 @@ class TestChatUsecase:
             fake_websocket, session_id, "Hello"
         )
 
-        assert any(e["type"] == "thinking" for e in fake_websocket.sent)
-        assert any(e["type"] == "text_delta" for e in fake_websocket.sent)
+        assert fake_websocket.sent[0]["type"] == "thinking"
+        assert fake_websocket.sent[0]["content"] == "analysis"
         assert fake_websocket.sent[-1]["type"] == "done"

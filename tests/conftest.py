@@ -1,8 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 from src.main import app
-from src.services.dataset_service import DatasetService
+from pydantic_ai import AgentRunResultEvent
+from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
+from src.services.dataset_service import DatasetService
 from src.services.session_service import SessionService
 
 
@@ -51,9 +53,18 @@ class FakeAgent:
     def __init__(self, deltas=None):
         self._deltas = deltas or []
 
-    def run_stream(self, *args, **kwargs):
-        return FakeStream(self._deltas)
+    async def run_stream_events(self, *args, **kwargs):
+        for i, delta in enumerate(self._deltas):
+            yield PartDeltaEvent(
+                index=i,
+                delta=TextPartDelta(content_delta=delta),
+            )
 
+        class FakeResult:
+            def all_messages(self):
+                return []
+
+        yield AgentRunResultEvent(result=FakeResult())
 
 @pytest.fixture
 def fake_agent_factory():
