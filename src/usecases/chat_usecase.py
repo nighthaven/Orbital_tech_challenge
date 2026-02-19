@@ -1,12 +1,17 @@
 import json
 import re
 from fastapi import WebSocket
+from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.messages import (
     ModelResponse,
     TextPart,
     ToolCallPart,
-    ModelRequest,
     ToolReturnPart,
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    TextPartDelta,
+    ThinkingPartDelta,
 )
 
 from src.agent.agent import create_agent
@@ -52,53 +57,38 @@ class ChatUseCase:
             dataset_info=self._dataset_service.dataset_info,
         )
         agent = create_agent(self._dataset_service.dataset_info)
+        thinking_stream_parser = ThinkingStreamParser(ws)
 
-        async with agent.run_stream(
+        async for event in agent.run_stream_events(
             question, deps=context, message_history=history or None
-        ) as stream:
-            pre_stream_msgs = list(stream._all_messages)
-            new_pre_msgs = pre_stream_msgs[len(history) :]
-            await self._send_tool_events(ws, new_pre_msgs)
+        ):
+            if isinstance(event, AgentRunResultEvent):
+                await thinking_stream_parser.flush()
+                self._session_service.save_history(session_id, event.result.all_messages())
+                await ws.send_json({"type": "done"})
 
-            thinking_stream_parser = ThinkingStreamParser(ws)
-            async for delta in stream.stream_text(delta=True):
-                await thinking_stream_parser.feed(delta)
-            await thinking_stream_parser.flush()
+            elif isinstance(event, FunctionToolCallEvent):
+                part = event.part
+                args = (
+                    part.args
+                    if isinstance(part.args, dict)
+                    else (json.loads(part.args) if isinstance(part.args, str) else {})
+                )
+                await ws.send_json({"type": "tool_call", "name": part.tool_name, "args": args})
 
-        all_msgs = stream.all_messages()
-        self._session_service.save_history(session_id, all_msgs)
+            elif isinstance(event, FunctionToolResultEvent):
+                result_part = event.result
+                if isinstance(result_part, ToolReturnPart):
+                    content = str(result_part.content)
+                    ws_event = self._build_tool_result_event(result_part.tool_name, content)
+                    await ws.send_json(ws_event)
 
-        await ws.send_json({"type": "done"})
-
-    async def _send_tool_events(self, ws: WebSocket, messages: list) -> None:
-        """Send tool_call and tool_result events from accumulated messages."""
-        for msg in messages:
-            if isinstance(msg, ModelResponse):
-                for part in msg.parts:
-                    if isinstance(part, ToolCallPart):
-                        args = (
-                            part.args
-                            if isinstance(part.args, dict)
-                            else (
-                                json.loads(part.args)
-                                if isinstance(part.args, str)
-                                else {}
-                            )
-                        )
-                        await ws.send_json(
-                            {
-                                "type": "tool_call",
-                                "name": part.tool_name,
-                                "args": args,
-                            }
-                        )
-
-            elif isinstance(msg, ModelRequest):
-                for part in msg.parts:
-                    if isinstance(part, ToolReturnPart):
-                        content = str(part.content)
-                        event = self._build_tool_result_event(part.tool_name, content)
-                        await ws.send_json(event)
+            elif isinstance(event, PartDeltaEvent):
+                delta = event.delta
+                if isinstance(delta, TextPartDelta):
+                    await thinking_stream_parser.feed(delta.content_delta)
+                elif isinstance(delta, ThinkingPartDelta) and delta.content_delta:
+                    await ws.send_json({"type": "thinking", "content": delta.content_delta})
 
     def _build_tool_result_event(self, tool_name: str, content: str) -> dict:
         """Build a tool_result WebSocket event, enriching with URLs and Plotly JSON."""
