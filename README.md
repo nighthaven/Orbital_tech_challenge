@@ -1,8 +1,8 @@
 # Case Technique — Développeur Full Stack - Boris Le Bon
 
-l'API de l'agent d'analyse de données
+L'API de l'agent d'analyse de données
 Puisque les instructions sont en français,
-je me permettrais d'écrire ainsi concernant le README.MD
+je me permettrais d'écrire ainsi concernant le README.md
 
 ## Structure des repos
 
